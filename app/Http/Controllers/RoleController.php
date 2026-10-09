@@ -19,7 +19,13 @@ class RoleController extends Controller
             $query->where('id_departamento', $request->departamento_id);
         }
 
-        $empleados = $query->get();
+        $empleados = $query->get()->sortByDesc(function ($emp) {
+            if (!$emp->cargo) return 0;
+            if ($emp->cargo->nombre_cargo === 'Administrador de Sistema') return 3;
+            if ($emp->cargo->nombre_cargo === 'Jefe de Servicio') return 2;
+            if ($emp->cargo->nombre_cargo === 'Jefe de Area') return 1;
+            return 0;
+        })->values();
         $mes = $request->input('mes', 10);
         $anio = $request->input('anio', 2026);
         $departamentoId = $request->input('departamento_id');
@@ -96,23 +102,24 @@ class RoleController extends Controller
 
         foreach ($people as $person) {
             $empDb = $empleadosDb[$person['id']] ?? null;
-            if (! $empDb || ! $empDb->id_departamento) {
+            if (! $empDb) {
                 continue;
             }
 
-            $deptId = $empDb->id_departamento;
-            if (! isset($rolMensuales[$deptId])) {
-                $rolMensuales[$deptId] = RolMensual::firstOrCreate([
+            $deptId = $empDb->id_departamento; // Could be null
+            $deptKey = $deptId ?? 'null';
+
+            if (! isset($rolMensuales[$deptKey])) {
+                $rolMensuales[$deptKey] = RolMensual::firstOrCreate([
                     'mes' => $mes,
                     'anio' => $anio,
                     'id_departamento' => $deptId,
                 ]);
             }
-            $rolMensual = $rolMensuales[$deptId];
+            $rolMensual = $rolMensuales[$deptKey];
 
             foreach ($person['shifts'] as $index => $shiftCode) {
                 $dia = $index + 1;
-                // Ignorar días inválidos para el mes
                 if (! checkdate($mes, $dia, $anio)) {
                     continue;
                 }
@@ -150,21 +157,17 @@ class RoleController extends Controller
                     return $item->id_empleado.'_'.$item->fecha;
                 });
 
+            $conflictsToDelete = [];
             foreach ($inserts as $insert) {
                 $key = $insert['id_empleado'].'_'.$insert['fecha'];
                 if (isset($existingAssignments[$key])) {
                     $conflict = $existingAssignments[$key]->first();
-                    $empName = $empleadosDb[$insert['id_empleado']]->nombre_completo ?? 'Empleado';
-                    $deptName = $conflict->rolMensual->departamento->nombre_departmento ?? 'Otra área';
-                    $fechaStr = date('d/m/Y', strtotime($insert['fecha']));
-
-                    return response()->json([
-                        'success' => false,
-                        'error' => "Este usuario ({$empName}) ya está asignado a otra área ({$deptName}) en la fecha {$fechaStr}.",
-                    ], 400);
+                    $conflictsToDelete[] = $conflict->id_asignacion;
                 }
             }
-
+            if (!empty($conflictsToDelete)) {
+                AsignacionTurnoDiario::whereIn('id_asignacion', $conflictsToDelete)->delete();
+            }
             AsignacionTurnoDiario::whereIn('id_rol_mensual', $rolesIds)
                 ->whereIn('id_empleado', $empleadosIds)
                 ->delete();
@@ -187,7 +190,11 @@ class RoleController extends Controller
             ->orderBy('mes', 'desc');
 
         if ($deptId && $deptId !== 'todos') {
-            $query->where('id_departamento', $deptId);
+            if ($deptId === 'null') {
+                $query->whereNull('id_departamento');
+            } else {
+                $query->where('id_departamento', $deptId);
+            }
         }
 
         $roles = $query->get();
@@ -200,8 +207,8 @@ class RoleController extends Controller
                 'mes' => $r->mes,
                 'mesNombre' => $mesesNombres[$r->mes] ?? 'Desconocido',
                 'anio' => $r->anio,
-                'departamento_id' => $r->id_departamento,
-                'departamento_nombre' => $r->departamento ? $r->departamento->nombre_departmento : 'Desconocido',
+                'departamento_id' => $r->id_departamento ?? 'null',
+                'departamento_nombre' => $r->departamento ? $r->departamento->nombre_departmento : 'Administración (Global)',
             ];
         });
     }

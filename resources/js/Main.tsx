@@ -22,6 +22,7 @@ type Person = {
 
 type User = {
   id_usuario: number
+  id_empleado: number | null
   nombre: string
   rol: string
   id_departamento: number | null
@@ -235,7 +236,23 @@ function Editor({ setView, people, setPeople, role, setRole, userObj }: { setVie
 function Reports({ setView, people, role, setRole, userObj }: { setView: (view: View) => void; people: Person[]; role: RoleMeta; setRole: React.Dispatch<React.SetStateAction<RoleMeta>>; userObj: User }) {
   const [selectedYear, setSelectedYear] = useState(role.year);
   const [selectedMonth, setSelectedMonth] = useState(role.month);
-  
+  const [depts, setDepts] = useState<any[]>([]);
+
+  useEffect(() => {
+      fetch(getApiUrl('/api/departamentos')).then(res=>res.json()).then(data=>setDepts(data));
+  }, []);
+
+  const onServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      if (e.target.value === 'Todos los departamentos') {
+          setRole(r => ({...r, serviceId: 'todos', service: 'Todos los departamentos'}))
+      } else {
+          const d = depts.find(x => x.nombre_departmento === e.target.value)
+          if(d) {
+              setRole(r => ({...r, serviceId: String(d.id_departamento), service: d.nombre_departmento}))
+          }
+      }
+  }
+
   const handleView = () => {
       setRole({ ...role, year: selectedYear, month: selectedMonth });
       setView('report');
@@ -252,13 +269,22 @@ function Reports({ setView, people, role, setRole, userObj }: { setView: (view: 
       <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="search-placeholder" style={{ width: '150px' }}>
           {monthNames.map(m => <option key={m}>{m}</option>)}
       </select>
-      <div className="search-placeholder" style={{ opacity: 0.7 }}>{role.service}</div>
+      {userObj.rol === 'Administrador' ? (
+          <select value={role.service} onChange={onServiceChange} className="search-placeholder" style={{ flex: 1 }}>
+              <option value="Todos los departamentos">Todos los departamentos</option>
+              {depts.map(d => <option key={d.id_departamento} value={d.nombre_departmento}>{d.nombre_departmento}</option>)}
+          </select>
+      ) : (
+          <div className="search-placeholder" style={{ opacity: 0.7 }}>{role.service}</div>
+      )}
   </div><div className="report-row"><div className="report-icon"><ClipboardList size={20} /></div><div className="report-info"><strong>{role.service}</strong><span>Rol mensual · {selectedMonth} {selectedYear}</span></div><span className="badge green-badge">Visualizar</span><button className="icon-button" onClick={handleView} aria-label="Ver rol"><Printer size={17} /></button></div></section></main>
 }
 
 function HistoryView({ setView, role, setRole, userObj }: { setView: (view: View) => void; role: RoleMeta; setRole: React.Dispatch<React.SetStateAction<RoleMeta>>; userObj: User }) {
   const [history, setHistory] = useState<any[]>([]);
-  const [search, setSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('Todos');
+  const [filterMonth, setFilterMonth] = useState('Todos');
+  const [filterYear, setFilterYear] = useState('Todos');
 
   useEffect(() => {
       let qs = '';
@@ -277,23 +303,54 @@ function HistoryView({ setView, role, setRole, userObj }: { setView: (view: View
       setView('report');
   }
 
-  const filteredHistory = history.filter(item => 
-      item.departamento_nombre.toLowerCase().includes(search.toLowerCase()) || 
-      item.mesNombre.toLowerCase().includes(search.toLowerCase()) || 
-      String(item.anio).includes(search)
-  );
+  const uniqueDepts = Array.from(new Set(history.map(h => h.departamento_nombre))).sort();
+  const uniqueYears = Array.from(new Set(history.map(h => String(h.anio)))).sort((a,b) => b.localeCompare(a));
+
+  const filteredHistory = history.filter(item => {
+      const matchDept = filterDept === 'Todos' || item.departamento_nombre === filterDept;
+      const matchMonth = filterMonth === 'Todos' || item.mesNombre === filterMonth;
+      const matchYear = filterYear === 'Todos' || String(item.anio) === filterYear;
+      return matchDept && matchMonth && matchYear;
+  });
+
+  const canPrintConsolidated = userObj.rol === 'Administrador' && filterMonth !== 'Todos' && filterYear !== 'Todos' && filterDept === 'Todos';
 
   return <main className="content"><div className="page-heading"><div><span className="eyebrow">RESPALDO</span><h1>Historia de roles guardados</h1><p>Consulta los registros mensuales guardados exitosamente en la base de datos.</p></div></div>
   <section className="report-list-card" style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
-              <Search size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: '#637582' }} />
-              <input type="text" placeholder="Buscar por departamento, mes o año..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '100%', padding: '10px 10px 10px 35px', borderRadius: '5px', border: '1px solid #cbd9e1', fontSize: '12px' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: '300px' }}>
+              {userObj.rol === 'Administrador' && (
+                  <select value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #cbd9e1', fontSize: '13px', outline: 'none' }}>
+                      <option value="Todos">Todos los departamentos</option>
+                      {uniqueDepts.map(d => <option key={d as string} value={d as string}>{d as string}</option>)}
+                  </select>
+              )}
+              <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd9e1', fontSize: '13px', outline: 'none' }}>
+                  <option value="Todos">Cualquier Mes</option>
+                  {monthNames.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <select value={filterYear} onChange={e => setFilterYear(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd9e1', fontSize: '13px', outline: 'none' }}>
+                  <option value="Todos">Cualquier Año</option>
+                  {uniqueYears.map(y => <option key={y as string} value={y as string}>{y as string}</option>)}
+              </select>
           </div>
-          <div style={{ color: '#637582', fontSize: '12px', marginLeft: 'auto' }}>
+          <div style={{ color: '#637582', fontSize: '13px', padding: '10px 15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
               <strong>{filteredHistory.length}</strong> resultados
           </div>
       </div>
+
+      {canPrintConsolidated && filteredHistory.length > 0 && (
+          <div style={{ padding: '15px 20px', marginBottom: '15px', background: '#f0f9fc', border: '1px solid #afd3e1', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                  <strong style={{ color: 'var(--navy)', display: 'block', fontSize: '14px', marginBottom: '4px' }}>Reporte Consolidado (Todas las Áreas)</strong>
+                  <span style={{ color: 'var(--muted)', fontSize: '12px' }}>Imprime el rol de todos los empleados del hospital para {filterMonth} {filterYear}.</span>
+              </div>
+              <button className="primary-button" onClick={() => { setRole({ year: filterYear, month: filterMonth, service: 'Todos los departamentos', serviceId: 'todos' }); setView('report'); }}>
+                  <Printer size={16} /> Imprimir Todo
+              </button>
+          </div>
+      )}
+
       {filteredHistory.map((item, index) => (
           <div key={item.id} className="report-row" style={{ borderTop: index === 0 ? 'none' : '1px solid var(--line)', padding: '18px 0' }}><div className="report-icon"><Archive size={20} /></div><div className="report-info"><strong>{item.departamento_nombre}</strong><span>Rol mensual · {item.mesNombre} {item.anio}</span></div><span className="badge green-badge">Guardado</span><button className="icon-button" onClick={() => handleView(item)} aria-label="Ver rol" title="Abrir y visualizar este rol"><Printer size={17} /></button></div>
       ))}
@@ -393,8 +450,13 @@ function AssignView({ setView, userObj }: { setView: (view: View) => void; userO
 
   const filteredEmployees = unassigned.filter(emp => {
       const matchSearch = emp.name.toLowerCase().includes(search.toLowerCase()) || emp.bio.toLowerCase().includes(search.toLowerCase());
+      
+      if (search.trim() !== '') {
+          return matchSearch;
+      }
+      
       const matchDept = filterDept === 'Todos' ? true : (filterDept === 'Sin Área' ? emp.dept_id === null : emp.dept === filterDept);
-      return matchSearch && matchDept;
+      return matchDept;
   });
 
   return (
@@ -429,50 +491,53 @@ function AssignView({ setView, userObj }: { setView: (view: View) => void; userO
               {filteredEmployees.map((emp) => {
                   const isMine = String(emp.dept_id) === String(userObj.id_departamento);
                   const isFree = emp.dept_id === null;
+                  const isSelf = String(emp.id) === String(userObj.id_empleado);
                   
                   return (
-                      <div key={emp.id} style={{ display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '14px', border: '1px solid', borderColor: isMine ? '#c8e5ea' : (isFree ? '#fcd34d' : '#e2e8f0'), background: isMine ? '#f3ffff' : (isFree ? '#fffbeb' : '#fff'), boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                      <div key={emp.id} style={{ display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '14px', border: '1px solid', borderColor: isSelf ? '#bbf7d0' : (isMine ? '#c8e5ea' : (isFree ? '#fcd34d' : '#e2e8f0')), background: isSelf ? '#f0fdf4' : (isMine ? '#f3ffff' : (isFree ? '#fffbeb' : '#fff')), boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                              <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.05em', background: isMine ? '#00a6a6' : (isFree ? '#f59e0b' : '#64748b'), color: '#fff' }}>
-                                  {isFree ? 'SIN ÁREA' : emp.dept.toUpperCase()}
+                              <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.05em', background: isSelf ? '#22c55e' : (isMine ? '#00a6a6' : (isFree ? '#f59e0b' : '#64748b')), color: '#fff' }}>
+                                  {isSelf ? 'TU USUARIO' : (isFree ? 'SIN ÁREA' : emp.dept.toUpperCase())}
                               </span>
                               <span style={{ fontSize: '11px', fontFamily: 'monospace', color: '#64748b', background: '#f1f5f9', padding: '3px 7px', borderRadius: '4px' }}>{emp.bio}</span>
                           </div>
                           
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: isMine ? '#d6ffff' : '#f1f5f9', color: isMine ? '#00a6a6' : '#64748b', display: 'grid', placeItems: 'center', fontWeight: 'bold', fontSize: '16px' }}>
+                              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: isSelf ? '#dcfce7' : (isMine ? '#d6ffff' : '#f1f5f9'), color: isSelf ? '#16a34a' : (isMine ? '#00a6a6' : '#64748b'), display: 'grid', placeItems: 'center', fontWeight: 'bold', fontSize: '16px' }}>
                                   {emp.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                  <strong style={{ display: 'block', color: 'var(--navy)', fontSize: '14px', marginBottom: '3px' }}>{emp.name}</strong>
+                                  <strong style={{ display: 'block', color: 'var(--navy)', fontSize: '14px', marginBottom: '3px' }}>{emp.name} {isSelf && '(Tú)'}</strong>
                                   <span style={{ display: 'block', color: 'var(--muted)', fontSize: '12px' }}>{emp.role}</span>
                               </div>
                           </div>
                           
                           <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
-                              {userObj.rol === 'Administrador' ? (
-                                  <>
-                                      {emp.dept_id !== null && (
-                                          <button onClick={() => confirmRemove(emp.id)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='#fee2e2'} onMouseLeave={(e)=>e.currentTarget.style.background='#fef2f2'}>
-                                              Quitar de su Área
-                                          </button>
-                                      )}
-                                      <button onClick={() => openAssignModal(emp)} className="primary-button" style={{ flex: 1, padding: '10px', fontSize: '12px' }}>
-                                          {isFree ? 'Asignar a un Área' : 'Transferir de Área'}
-                                      </button>
-                                  </>
-                              ) : (
-                                  <>
-                                      {isMine ? (
-                                          <button onClick={() => confirmRemove(emp.id)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='#fee2e2'} onMouseLeave={(e)=>e.currentTarget.style.background='#fef2f2'}>
-                                              Quitar de mi Área
-                                          </button>
-                                      ) : (
+                              {!isSelf && (
+                                  userObj.rol === 'Administrador' ? (
+                                      <>
+                                          {emp.dept_id !== null && (
+                                              <button onClick={() => confirmRemove(emp.id)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='#fee2e2'} onMouseLeave={(e)=>e.currentTarget.style.background='#fef2f2'}>
+                                                  Quitar de su Área
+                                              </button>
+                                          )}
                                           <button onClick={() => openAssignModal(emp)} className="primary-button" style={{ flex: 1, padding: '10px', fontSize: '12px' }}>
-                                              {isFree ? 'Asignar a mi Área' : 'Transferir a mi Área'}
+                                              {isFree ? 'Asignar a un Área' : 'Transferir de Área'}
                                           </button>
-                                      )}
-                                  </>
+                                      </>
+                                  ) : (
+                                      <>
+                                          {isMine ? (
+                                              <button onClick={() => confirmRemove(emp.id)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='#fee2e2'} onMouseLeave={(e)=>e.currentTarget.style.background='#fef2f2'}>
+                                                  Quitar de mi Área
+                                              </button>
+                                          ) : (
+                                              <button onClick={() => openAssignModal(emp)} className="primary-button" style={{ flex: 1, padding: '10px', fontSize: '12px' }}>
+                                                  {isFree ? 'Asignar a mi Área' : 'Transferir a mi Área'}
+                                              </button>
+                                          )}
+                                      </>
+                                  )
                               )}
                           </div>
                       </div>
@@ -557,14 +622,16 @@ function AssignView({ setView, userObj }: { setView: (view: View) => void; userO
 
 function AreasView({ setView }: { setView: (view: View) => void }) {
   const [depts, setDepts] = useState<any[]>([]);
-  const [jefes, setJefes] = useState<any[]>([]);
+  const [empleados, setEmpleados] = useState<any[]>([]);
   const [newAreaName, setNewAreaName] = useState('');
-  const [selectedJefeId, setSelectedJefeId] = useState('');
+  const [selectedEmpleadoId, setSelectedEmpleadoId] = useState('');
   const [alertMsg, setAlertMsg] = useState('');
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [empSearchTerm, setEmpSearchTerm] = useState('');
 
   const load = () => {
       fetch(getApiUrl('/api/departamentos')).then(r=>r.json()).then(data => setDepts(data));
-      fetch(getApiUrl('/api/jefes')).then(r=>r.json()).then(data => setJefes(data));
+      fetch(getApiUrl('/api/empleados/all')).then(r=>r.json()).then(data => setEmpleados(data));
   }
   useEffect(() => { load() }, []);
 
@@ -575,13 +642,18 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
       const res = await fetch(getApiUrl('/api/departamentos'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre_departmento: newAreaName.trim(), jefe_id: selectedJefeId || null })
+          body: JSON.stringify({ nombre_departmento: newAreaName.trim(), jefe_empleado_id: selectedEmpleadoId || null })
       });
       
       if (res.ok) {
-          setAlertMsg('Área creada exitosamente.');
+          const data = await res.json();
+          let msg = 'Área creada exitosamente.';
+          if (data.created_username) {
+              msg += ` Se ha generado un acceso para el Jefe con el usuario: ${data.created_username}`;
+          }
+          setAlertMsg(msg);
           setNewAreaName('');
-          setSelectedJefeId('');
+          setSelectedEmpleadoId('');
           load();
       } else {
           setAlertMsg('Error al crear el área.');
@@ -594,7 +666,7 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
         <div>
           <span className="eyebrow">ADMINISTRACIÓN</span>
           <h1>Gestión de Áreas</h1>
-          <p>Crea nuevas áreas y asigna Jefes a cada departamento.</p>
+          <p>Crea nuevas áreas y asigna cualquier empleado como Jefe (su usuario se creará automáticamente).</p>
         </div>
       </div>
       
@@ -602,24 +674,20 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
           <div className="form-card-heading">
               <div>
                   <h2>Crear Nueva Área</h2>
-                  <p>Define el nombre del nuevo departamento y opcionalmente asígnale un Jefe.</p>
+                  <p>Define el nombre del nuevo departamento y opcionalmente elige un empleado para ser su Jefe.</p>
               </div>
           </div>
           <form onSubmit={createArea} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', padding: '20px' }}>
               <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Nombre del Área</label>
-                  <input type="text" value={newAreaName} onChange={e => setNewAreaName(e.target.value)} placeholder="Ej: Pediatría" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1' }} />
+                  <input type="text" value={newAreaName} onChange={e => setNewAreaName(e.target.value)} placeholder="Ej: Traumatología" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1' }} />
               </div>
               <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Asignar Jefe (Opcional)</label>
-                  <select value={selectedJefeId} onChange={e => setSelectedJefeId(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1', background: '#fff' }}>
-                      <option value="">-- Sin asignar --</option>
-                      {jefes.map(j => (
-                          <option key={j.id_empleado} value={j.id_empleado}>
-                              {j.nombre_completo} {j.id_departamento ? '(Ya tiene área)' : '(Sin área)'}
-                          </option>
-                      ))}
-                  </select>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Asignar Empleado como Jefe (Opcional)</label>
+                  <button type="button" onClick={() => setSearchModalOpen(true)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1', background: '#fff', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: selectedEmpleadoId ? '#0f172a' : '#64748b' }}>
+                      {selectedEmpleadoId ? (empleados.find(e => String(e.id_empleado) === String(selectedEmpleadoId))?.nombre_completo || 'Seleccionado') : '-- Seleccionar Empleado --'}
+                      <Search size={16} color="#64748b" />
+                  </button>
               </div>
               <button type="submit" className="primary-button" style={{ padding: '12px 20px', whiteSpace: 'nowrap' }}>
                   Crear Área
@@ -631,7 +699,7 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
           <h3 style={{ marginTop: 0, marginBottom: '15px', color: 'var(--navy)' }}>Áreas Existentes ({depts.length})</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
               {depts.map(d => {
-                  const jefe = jefes.find(j => j.id_departamento === d.id_departamento);
+                  const jefe = d.empleados && d.empleados.length > 0 ? d.empleados[0] : null;
                   return (
                       <div key={d.id_departamento} style={{ padding: '15px', border: '1px solid #e2e8f0', borderRadius: '10px', background: '#f8fafc' }}>
                           <strong style={{ display: 'block', color: 'var(--navy)', marginBottom: '5px' }}>{d.nombre_departmento}</strong>
@@ -655,6 +723,32 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
                       <button onClick={() => setAlertMsg('')} className="primary-button" style={{ padding: '10px 20px' }}>
                           Entendido
                       </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {searchModalOpen && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: '#fff', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                      <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--navy)' }}>Buscar Empleado</h3>
+                      <button onClick={() => setSearchModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '5px' }}><X size={20} color="#64748b" /></button>
+                  </div>
+                  <input autoFocus type="text" placeholder="Buscar por código (ej. JEF-004) o nombre..." value={empSearchTerm} onChange={e => setEmpSearchTerm(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1', marginBottom: '15px', fontSize: '14px' }} />
+                  <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <button type="button" onClick={() => { setSelectedEmpleadoId(''); setSearchModalOpen(false); }} style={{ width: '100%', padding: '12px', textAlign: 'left', border: 'none', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer' }}>
+                          <strong style={{ color: '#64748b' }}>-- Ninguno (Crear área sin jefe) --</strong>
+                      </button>
+                      {empleados.filter(e => e.nombre_completo.toLowerCase().includes(empSearchTerm.toLowerCase()) || e.codigo_biometrico.toLowerCase().includes(empSearchTerm.toLowerCase())).map(emp => (
+                          <button type="button" key={emp.id_empleado} onClick={() => { setSelectedEmpleadoId(emp.id_empleado); setSearchModalOpen(false); }} style={{ width: '100%', padding: '12px', textAlign: 'left', border: 'none', borderBottom: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', display: 'flex', flexDirection: 'column', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                              <strong style={{ color: 'var(--navy)', fontSize: '14px', marginBottom: '2px' }}>{emp.nombre_completo}</strong>
+                              <span style={{ fontSize: '12px', color: '#64748b' }}>Cód: <span style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '2px 4px', borderRadius: '4px' }}>{emp.codigo_biometrico}</span> · {emp.departamento ? `Área actual: ${emp.departamento.nombre_departmento}` : 'Sin área'}</span>
+                          </button>
+                      ))}
+                      {empleados.filter(e => e.nombre_completo.toLowerCase().includes(empSearchTerm.toLowerCase()) || e.codigo_biometrico.toLowerCase().includes(empSearchTerm.toLowerCase())).length === 0 && (
+                          <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>No se encontraron empleados con ese término.</div>
+                      )}
                   </div>
               </div>
           </div>
