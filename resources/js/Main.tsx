@@ -1,10 +1,10 @@
 'use client'
 
 import { FormEvent, useMemo, useState, useEffect } from 'react'
-import { ArrowLeft, CalendarDays, ClipboardList, Hospital, LogIn, Menu, Printer, Save, ShieldCheck, Users, X } from 'lucide-react'
+import { ArrowLeft, CalendarDays, ClipboardList, Hospital, LogIn, Menu, Printer, Save, ShieldCheck, Users, X, Archive, Search } from 'lucide-react'
 
 type Shift = 'M' | 'M*' | 'T' | 'N' | 'L'
-type View = 'login' | 'dashboard' | 'editor' | 'reports' | 'report'
+type View = 'login' | 'dashboard' | 'editor' | 'reports' | 'report' | 'history' | 'assign' | 'areas'
 
 type RoleMeta = { year: string; month: string; service: string; serviceId: string | null }
 
@@ -44,9 +44,16 @@ function AppShell({ view, setView, children, userObj }: { view: View; setView: (
   if (view === 'login') return <>{children}</>
   return <div className="app-layout"><aside className={open ? 'sidebar open' : 'sidebar'}><div className="brand"><div className="brand-mark"><Hospital size={20} /></div><div><strong>HOSPITAL JAPONÉS</strong><span>Gestión de turnos</span></div><button className="mobile-close" onClick={() => setOpen(false)} aria-label="Cerrar menú"><X size={18} /></button></div><nav aria-label="Navegación principal"><button className={view === 'dashboard' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('dashboard'); setOpen(false) }}><ClipboardList size={18} /> Resumen</button>
   {userObj.rol !== 'Operador' && (
-      <button className={view === 'editor' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('editor'); setOpen(false) }}><CalendarDays size={18} /> Registrar rol mensual</button>
+      <>
+          <button className={view === 'editor' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('editor'); setOpen(false) }}><CalendarDays size={18} /> Registrar rol mensual</button>
+          <button className={view === 'assign' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('assign'); setOpen(false) }}><Users size={18} /> Asignar personal</button>
+      </>
   )}
-  <button className={view === 'reports' || view === 'report' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('reports'); setOpen(false) }}><Printer size={18} /> Roles existentes</button></nav><div className="sidebar-footer" style={{ marginTop: 'auto' }}><div className="user-avatar">{userObj.nombre.slice(0, 1).toUpperCase()}</div><div><strong>{userObj.nombre}</strong><span>{userObj.rol}</span></div><button className="logout" onClick={() => setView('login')}>Salir</button></div></aside><div className="main-area"><header className="topbar"><button className="menu-button" onClick={() => setOpen(true)} aria-label="Abrir menú"><Menu size={20} /></button><div><span className="eyebrow">CONTROL DE ROLES</span><strong>Panel Principal</strong></div><div className="topbar-status"><span className="status-dot" /> Sesión activa</div></header>{children}</div></div>
+  {userObj.rol === 'Administrador' && (
+      <button className={view === 'areas' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('areas'); setOpen(false) }}><Hospital size={18} /> Gestión de Áreas</button>
+  )}
+  <button className={view === 'reports' || view === 'report' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('reports'); setOpen(false) }}><Printer size={18} /> Roles existentes</button>
+  <button className={view === 'history' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('history'); setOpen(false) }}><Archive size={18} /> Historia</button></nav><div className="sidebar-footer" style={{ marginTop: 'auto' }}><div className="user-avatar">{userObj.nombre.slice(0, 1).toUpperCase()}</div><div><strong>{userObj.nombre}</strong><span>{userObj.rol}</span></div><button className="logout" onClick={() => setView('login')}>Salir</button></div></aside><div className="main-area"><header className="topbar"><button className="menu-button" onClick={() => setOpen(true)} aria-label="Abrir menú"><Menu size={20} /></button><div><span className="eyebrow">CONTROL DE ROLES</span><strong>Panel Principal</strong></div><div className="topbar-status"><span className="status-dot" /> Sesión activa</div></header>{children}</div></div>
 }
 
 function Login({ onLogin }: { onLogin: (code: string) => void }) {
@@ -74,7 +81,10 @@ function Login({ onLogin }: { onLogin: (code: string) => void }) {
 function Dashboard({ setView, userObj, people }: { setView: (view: View) => void; userObj: User; people: Person[] }) {
   return <main className="content"><div className="welcome"><div><span className="eyebrow">PANEL PRINCIPAL</span><h1>Buenos días, {userObj.nombre}</h1><p>Administra la programación mensual de turnos de tu servicio.</p></div><div className="date-chip"><CalendarDays size={17} /><span>Octubre 2026</span></div></div><div className="stats-grid"><div className="stat-card"><span className="stat-icon blue"><Users size={18} /></span><div><strong>{people.length}</strong><span>Personal registrado</span></div></div><div className="stat-card"><span className="stat-icon green"><CalendarDays size={18} /></span><div><strong>Octubre</strong><span>Rol en edición</span></div></div><div className="stat-card"><span className="stat-icon violet"><ClipboardList size={18} /></span><div><strong>31 días</strong><span>Período configurado</span></div></div></div><section className="action-section"><div className="section-heading"><div><span className="eyebrow">ACCIONES RÁPIDAS</span><h2>¿Qué deseas hacer?</h2></div></div><div className="action-grid">
   {userObj.rol !== 'Operador' && (
-      <button className="action-card primary" onClick={() => setView('editor')}><span className="action-icon"><CalendarDays size={24} /></span><span><strong>Registrar nuevo rol mensual</strong><small>Configura el personal y asigna los turnos del mes.</small></span><span className="arrow">→</span></button>
+      <>
+          <button className="action-card primary" onClick={() => setView('editor')}><span className="action-icon"><CalendarDays size={24} /></span><span><strong>Registrar nuevo rol mensual</strong><small>Configura el personal y asigna los turnos del mes.</small></span><span className="arrow">→</span></button>
+          <button className="action-card" onClick={() => setView('assign')}><span className="action-icon"><Users size={24} /></span><span><strong>Asignar nuevo personal</strong><small>Recluta empleados sin área a tu departamento.</small></span><span className="arrow">→</span></button>
+      </>
   )}
   <button className="action-card" onClick={() => setView('reports')}><span className="action-icon"><Printer size={24} /></span><span><strong>Ver e imprimir roles existentes</strong><small>Consulta, revisa e imprime planillas ya registradas.</small></span><span className="arrow">→</span></button></div></section><section className="recent-section"><div className="section-heading"><div><span className="eyebrow">ACTIVIDAD RECIENTE</span><h2>Roles registrados</h2></div><button className="text-button" onClick={() => setView('reports')}>Ver historial →</button></div><div className="recent-row"><div className="recent-mark"><ClipboardList size={18} /></div><div><strong>{userObj.rol === 'Administrador' ? 'Múltiples Servicios' : 'Tu Servicio Asignado'}</strong><span>Octubre 2026 · {people.length} funcionarios · Actualizado hoy</span></div><span className="badge">En revisión</span></div></section></main>
 }
@@ -85,6 +95,7 @@ function Editor({ setView, people, setPeople, role, setRole, userObj }: { setVie
   const [service, setService] = useState(role.service)
   const [depts, setDepts] = useState<any[]>([])
   const [turnos, setTurnos] = useState<any[]>([])
+  const [alertMsg, setAlertMsg] = useState('');
 
   useEffect(() => {
       fetch(getApiUrl('/api/departamentos')).then(r=>r.json()).then(data => {
@@ -120,11 +131,11 @@ function Editor({ setView, people, setPeople, role, setRole, userObj }: { setVie
 
   const updateShift = (personIndex: number, dayIndex: number, value: Shift) => setPeople((current) => current.map((person, index) => index === personIndex ? { ...person, shifts: person.shifts.map((shift, i) => i === dayIndex ? value : shift) } : person))
   
-  const fillRow = (personIndex: number) => {
+  const fillRow = (personIndex: number, startDayIndex: number = 0) => {
       setPeople(current => current.map((p, index) => {
           if (index === personIndex) {
-              const firstShift = p.shifts[0] || 'L';
-              return { ...p, shifts: p.shifts.map(() => firstShift) };
+              const shiftToCopy = p.shifts[startDayIndex] || 'L';
+              return { ...p, shifts: p.shifts.map((s, i) => i >= startDayIndex ? shiftToCopy : s) };
           }
           return p;
       }));
@@ -191,18 +202,34 @@ function Editor({ setView, people, setPeople, role, setRole, userObj }: { setVie
               setView('report');
           } else {
               const data = await res.json();
-              alert(data.error || 'Error al guardar el rol');
+              setAlertMsg(data.error || 'Error al guardar el rol');
           }
       } catch (e) {
-          alert('Error de red al intentar guardar');
+          setAlertMsg('Error de red al intentar guardar');
       }
   }
   
-  return <main className="content editor-page"><div className="page-heading"><div><span className="eyebrow">NUEVO REGISTRO</span><h1>Registrar rol mensual</h1><p>Completa la matriz de turnos para generar la planilla oficial.</p></div><button className="secondary-button" onClick={() => setView('dashboard')}><ArrowLeft size={16} /> Volver al resumen</button></div><section className="form-card"><div className="form-card-heading"><div><h2>Datos del período</h2><p>Define el período y servicio al que corresponde este rol.</p></div><span className="step-label">PASO 1 DE 2</span></div><div className="period-form"><label>Año<select value={year} onChange={(event) => setYear(event.target.value)}><option>2026</option><option>2027</option><option>2028</option></select></label><label>Mes<select value={month} onChange={(event) => setMonth(event.target.value)}>{monthNames.map((name) => <option key={name}>{name}</option>)}</select></label><label className="service-field">Departamento / Servicio<select value={service} onChange={onServiceChange} disabled={userObj.rol !== 'Administrador'} >
+  return <main className="content editor-page"><div className="page-heading"><div><span className="eyebrow">NUEVO REGISTRO</span><h1>Registrar rol mensual</h1><p>Completa la matriz de turnos para generar la planilla oficial.</p></div><button className="secondary-button" onClick={() => setView('dashboard')}><ArrowLeft size={16} /> Volver al resumen</button></div><section className="form-card"><div className="form-card-heading"><div><h2>Datos del período</h2><p>Define el período y servicio al que corresponde este rol.</p></div><span className="step-label">PASO 1 DE 2</span></div><div className="period-form"><label>Año<select value={year} onChange={(event) => { setYear(event.target.value); setRole(r => ({...r, year: event.target.value})); }}><option>2026</option><option>2027</option><option>2028</option></select></label><label>Mes<select value={month} onChange={(event) => { setMonth(event.target.value); setRole(r => ({...r, month: event.target.value})); }}>{monthNames.map((name) => <option key={name}>{name}</option>)}</select></label><label className="service-field">Departamento / Servicio<select value={service} onChange={onServiceChange} disabled={userObj.rol !== 'Administrador'} >
       {userObj.rol === 'Administrador' && <option value="Todos los departamentos">Todos los departamentos</option>}
       {depts.map(d => <option key={d.id_departamento} value={d.nombre_departmento}>{d.nombre_departmento}</option>)}
       {depts.length === 0 && <option>{service}</option>}
-  </select></label></div></section><section className="form-card matrix-card"><div className="form-card-heading"><div><h2>Matriz de captura masiva</h2><p>Selecciona el turno correspondiente en cada día para cada funcionario.</p></div><span className="step-label">PASO 2 DE 2</span></div><div className="shift-legend"><span><i className="shift-m" /> M · Mañana</span><span><i className="shift-mstar" /> M* · Extendido</span><span><i className="shift-t" /> T · Tarde</span><span><i className="shift-n" /> N · Noche</span><span><i className="shift-l" /> L · Libre</span></div><div className="editor-table-wrap" style={{ maxHeight: '600px', overflowY: 'auto' }}><table className="editor-table"><thead><tr><th className="sticky-col first" style={{ zIndex: 4 }}>N°</th><th className="sticky-col person-col" style={{ zIndex: 4 }}>Personal</th>{days.map((day) => <th key={day}>{day}</th>)}<th>Total Hrs</th></tr></thead><tbody>{people.map((person, personIndex) => <tr key={person.bio}><td className="sticky-col first">{personIndex+1}</td><td className="sticky-col person-col"><strong>{person.name}</strong><span>{person.role}</span></td>{days.map((day, dayIndex) => <td key={`${person.bio}-${dayIndex}`} onDoubleClick={() => fillRow(personIndex)} title="Doble clic para llenar todo el mes con este turno"><select aria-label={`${person.name}, día ${dayIndex + 1}`} value={person.shifts[dayIndex] || 'L'} onChange={(event) => updateShift(personIndex, dayIndex, event.target.value as Shift)} className={`shift-select shift-${(person.shifts[dayIndex] || 'L').replace('*', 'star').toLowerCase()}`}><option value="M">M</option><option value="M*">M*</option><option value="T">T</option><option value="N">N</option><option value="L">L</option></select></td>)}<td style={{ fontWeight: 'bold' }}>{calcHours(person.shifts.slice(0, daysInMonth))}h</td></tr>)}</tbody></table></div><div className="editor-actions"><span><ShieldCheck size={15} /> Los cambios se guardan al procesar el rol.</span><div style={{ display: 'flex', gap: '10px' }}><button className="secondary-button" onClick={loadPreviousMonth}>Copiar del mes anterior</button><button className="secondary-button" onClick={fillRandom}>Llenar al azar</button><button className="primary-button" onClick={save}><Save size={16} /> Guardar y procesar rol</button></div></div></section></main>
+  </select></label></div></section><section className="form-card matrix-card"><div className="form-card-heading"><div><h2>Matriz de captura masiva</h2><p>Selecciona el turno correspondiente en cada día para cada funcionario.</p></div><span className="step-label">PASO 2 DE 2</span></div><div className="shift-legend"><span><i className="shift-m" /> M · Mañana</span><span><i className="shift-mstar" /> M* · Extendido</span><span><i className="shift-t" /> T · Tarde</span><span><i className="shift-n" /> N · Noche</span><span><i className="shift-l" /> L · Libre</span></div><div className="editor-table-wrap" style={{ maxHeight: '600px', overflowY: 'auto' }}><table className="editor-table"><thead><tr><th className="sticky-col first" style={{ zIndex: 4 }}>N°</th><th className="sticky-col person-col" style={{ zIndex: 4 }}>Personal</th>{days.map((day) => <th key={day}>{day}</th>)}<th>Total Hrs</th></tr></thead><tbody>{people.map((person, personIndex) => <tr key={person.bio}><td className="sticky-col first" style={{ zIndex: 3 }}>{personIndex+1}</td><td className="sticky-col person-col"><strong>{person.name}</strong><span>{person.role}</span><button type="button" onClick={() => fillRow(personIndex, 0)} style={{ fontSize: '10px', padding: '2px 5px', marginTop: '5px', cursor: 'pointer', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f3f4f6', color: '#374151' }} title="Copia el turno del día 1 a todo el mes">↹ Repetir Día 1</button></td>{days.map((day, dayIndex) => <td key={`${person.bio}-${dayIndex}`} onDoubleClick={() => fillRow(personIndex, dayIndex)} title="Doble clic para repetir este turno hasta fin de mes"><select aria-label={`${person.name}, día ${dayIndex + 1}`} value={person.shifts[dayIndex] || 'L'} onChange={(event) => updateShift(personIndex, dayIndex, event.target.value as Shift)} className={`shift-select shift-${(person.shifts[dayIndex] || 'L').replace('*', 'star').toLowerCase()}`}><option value="M">M</option><option value="M*">M*</option><option value="T">T</option><option value="N">N</option><option value="L">L</option></select></td>)}<td style={{ fontWeight: 'bold' }}>{calcHours(person.shifts.slice(0, daysInMonth))}h</td></tr>)}</tbody></table></div><div className="editor-actions"><span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}><div><ShieldCheck size={15} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Los cambios se guardan al procesar el rol.</div><div style={{ fontSize: '11px', color: '#637582' }}>💡 <b>Consejo:</b> Doble clic en cualquier turno para repetirlo hasta fin de mes.</div></span><div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><button className="secondary-button" onClick={loadPreviousMonth}>Copiar del mes anterior</button><button className="secondary-button" onClick={fillRandom}>Llenar al azar</button><button className="primary-button" onClick={save}><Save size={16} /> Guardar y procesar rol</button></div></div></section>
+  {alertMsg && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: 'var(--navy)' }}>Atención</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '25px', lineHeight: 1.5 }}>
+                  {alertMsg}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setAlertMsg('')} className="primary-button" style={{ padding: '10px 20px' }}>
+                      Entendido
+                  </button>
+              </div>
+          </div>
+      </div>
+  )}
+  </main>
 }
 
 function Reports({ setView, people, role, setRole, userObj }: { setView: (view: View) => void; people: Person[]; role: RoleMeta; setRole: React.Dispatch<React.SetStateAction<RoleMeta>>; userObj: User }) {
@@ -226,7 +253,52 @@ function Reports({ setView, people, role, setRole, userObj }: { setView: (view: 
           {monthNames.map(m => <option key={m}>{m}</option>)}
       </select>
       <div className="search-placeholder" style={{ opacity: 0.7 }}>{role.service}</div>
-  </div><div className="report-row"><div className="report-icon"><ClipboardList size={20} /></div><div className="report-info"><strong>{role.service}</strong><span>Rol mensual · {selectedMonth} {selectedYear}</span></div><span className="badge green-badge">Procesado</span><button className="icon-button" onClick={handleView} aria-label="Ver rol"><Printer size={17} /></button></div></section></main>
+  </div><div className="report-row"><div className="report-icon"><ClipboardList size={20} /></div><div className="report-info"><strong>{role.service}</strong><span>Rol mensual · {selectedMonth} {selectedYear}</span></div><span className="badge green-badge">Visualizar</span><button className="icon-button" onClick={handleView} aria-label="Ver rol"><Printer size={17} /></button></div></section></main>
+}
+
+function HistoryView({ setView, role, setRole, userObj }: { setView: (view: View) => void; role: RoleMeta; setRole: React.Dispatch<React.SetStateAction<RoleMeta>>; userObj: User }) {
+  const [history, setHistory] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+      let qs = '';
+      if (userObj.rol !== 'Administrador' && userObj.id_departamento) {
+          qs = `?departamento_id=${userObj.id_departamento}`;
+      } else {
+          qs = '?departamento_id=todos';
+      }
+      fetch(getApiUrl('/api/roles/history') + qs)
+          .then(res => res.json())
+          .then(data => setHistory(data));
+  }, [userObj]);
+
+  const handleView = (item: any) => {
+      setRole({ year: String(item.anio), month: item.mesNombre, service: item.departamento_nombre, serviceId: String(item.departamento_id) });
+      setView('report');
+  }
+
+  const filteredHistory = history.filter(item => 
+      item.departamento_nombre.toLowerCase().includes(search.toLowerCase()) || 
+      item.mesNombre.toLowerCase().includes(search.toLowerCase()) || 
+      String(item.anio).includes(search)
+  );
+
+  return <main className="content"><div className="page-heading"><div><span className="eyebrow">RESPALDO</span><h1>Historia de roles guardados</h1><p>Consulta los registros mensuales guardados exitosamente en la base de datos.</p></div></div>
+  <section className="report-list-card" style={{ padding: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
+              <Search size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: '#637582' }} />
+              <input type="text" placeholder="Buscar por departamento, mes o año..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '100%', padding: '10px 10px 10px 35px', borderRadius: '5px', border: '1px solid #cbd9e1', fontSize: '12px' }} />
+          </div>
+          <div style={{ color: '#637582', fontSize: '12px', marginLeft: 'auto' }}>
+              <strong>{filteredHistory.length}</strong> resultados
+          </div>
+      </div>
+      {filteredHistory.map((item, index) => (
+          <div key={item.id} className="report-row" style={{ borderTop: index === 0 ? 'none' : '1px solid var(--line)', padding: '18px 0' }}><div className="report-icon"><Archive size={20} /></div><div className="report-info"><strong>{item.departamento_nombre}</strong><span>Rol mensual · {item.mesNombre} {item.anio}</span></div><span className="badge green-badge">Guardado</span><button className="icon-button" onClick={() => handleView(item)} aria-label="Ver rol" title="Abrir y visualizar este rol"><Printer size={17} /></button></div>
+      ))}
+      {filteredHistory.length === 0 && <p style={{ color: '#888', fontSize: '13px' }}>{history.length === 0 ? 'Aún no hay roles guardados en el sistema.' : 'No se encontraron resultados para la búsqueda.'}</p>}
+  </section></main>
 }
 
 function Report({ setView, people, role }: { setView: (view: View) => void; people: Person[]; role: RoleMeta }) {
@@ -234,6 +306,361 @@ function Report({ setView, people, role }: { setView: (view: View) => void; peop
   const dynamicDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return <main className="report-page"><div className="report-toolbar"><button className="secondary-button" onClick={() => setView('reports')}><ArrowLeft size={16} /> Volver a roles</button><button className="primary-button" onClick={() => window.print()}><Printer size={16} /> Imprimir rol</button></div><article className="print-sheet"><header className="roster-header"><div className="institution-block"><div className="hospital-name">HOSPITAL JAPONÉS</div><div className="received-box">SELLO DE RECEPCIÓN<br /><span>FECHA: ____ / ____ / ______</span></div></div><div className="title-block"><h1>ROL DE TURNO MENSUAL</h1><p>{role.service.toUpperCase()}</p></div><div className="period-box"><span>PERÍODO</span><strong>MES: {role.month.toUpperCase()}</strong><strong>AÑO: {role.year}</strong></div></header><section className="legend-row"><div className="legend-items"><b>LEYENDA:</b><span><strong>M</strong> = Mañana 07:30 a 13:30</span><span><strong>M*</strong> = Mañana extendido</span><span><strong>T</strong> = Tarde</span><span><strong>N</strong> = Noche</span><span><strong>L</strong> = Libre</span></div></section><div className="table-wrap"><table className="roster-table"><caption className="sr-only">Rol de turno mensual</caption><colgroup><col className="col-no" /><col className="col-ff" /><col className="col-item" /><col className="col-bio" /><col className="col-phone" /><col className="col-name" /><col className="col-role" />{dynamicDays.map((day) => <col key={day} className="col-day" />)}{[1, 2, 3, 4, 5].map((item) => <col key={item} className="col-total" />)}</colgroup><thead><tr className="group-row"><th colSpan={7}>DATOS DEL PERSONAL</th><th colSpan={daysInMonth}>DÍAS DEL MES — {role.month.toUpperCase()} {role.year}</th><th colSpan={5}>TOTALES</th></tr><tr className="header-row"><th>N°</th><th>F.<br />FIN.</th><th>ITEM</th><th>COD.<br />BIOMÉTRICO</th><th>TELF.</th><th>NOMBRE</th><th>CARGO</th>{dynamicDays.map((day) => <th key={day}>{day}</th>)}<th>MAÑANA</th><th>TARDE</th><th>NOCHE</th><th>LIBRE</th><th>TOTAL</th></tr></thead><tbody>{people.map((person, i) => { const totals = getTotals(person.shifts.slice(0, daysInMonth)); return <tr key={person.bio}><td>{i+1}</td><td>{person.ff}</td><td>{person.item}</td><td>{person.bio}</td><td>{person.phone}</td><td className="name-cell">{person.name}</td><td className="role-cell">{person.role}</td>{person.shifts.slice(0, daysInMonth).map((shift, index) => <td className={`shift-cell ${shift === 'L' ? 'free' : ''}`} key={`${person.bio}-${index}`}>{shift === 'L' ? '' : shift}</td>)}<td className="total-cell">{totals.M}</td><td className="total-cell">{totals.T}</td><td className="total-cell">{totals.N}</td><td className="total-cell">{totals.L}</td><td className="total-cell">{daysInMonth}</td></tr> })}</tbody><tfoot><tr><td colSpan={7}>TOTAL PERSONAL PROGRAMADO: {people.length}</td><td colSpan={daysInMonth}></td><td colSpan={5}></td></tr></tfoot></table></div><footer className="signatures"><div>ELABORADO POR:<span /></div><div>REVISADO POR:<span /></div><div>APROBADO POR:<span /></div></footer></article></main>
+}
+
+function AssignView({ setView, userObj }: { setView: (view: View) => void; userObj: User }) {
+  const [unassigned, setUnassigned] = useState<any[]>([]);
+  const [depts, setDepts] = useState<any[]>([]);
+  const [selectedDept, setSelectedDept] = useState<string>(userObj.id_departamento ? String(userObj.id_departamento) : '');
+  const [search, setSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('Todos');
+  const [initialFilterSet, setInitialFilterSet] = useState(false);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [targetEmp, setTargetEmp] = useState<any>(null);
+  const [targetDept, setTargetDept] = useState<string>('');
+  
+  const [alertMsg, setAlertMsg] = useState('');
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [empToRemove, setEmpToRemove] = useState<number | null>(null);
+
+  const load = () => {
+      fetch(getApiUrl('/api/empleados/unassigned')).then(r=>r.json()).then(data => setUnassigned(data));
+      fetch(getApiUrl('/api/departamentos')).then(r=>r.json()).then(data => {
+          setDepts(data);
+          setInitialFilterSet(prev => {
+              if (!prev && userObj.rol !== 'Administrador' && userObj.id_departamento) {
+                  const myDept = data.find((d: any) => String(d.id_departamento) === String(userObj.id_departamento));
+                  if (myDept) {
+                      setFilterDept(myDept.nombre_departmento);
+                  }
+              }
+              return true;
+          });
+      });
+  }
+
+  useEffect(() => { load() }, []);
+
+  const openAssignModal = (emp: any) => {
+      setTargetEmp(emp);
+      if (userObj.rol === 'Administrador') {
+          setTargetDept(depts.length > 0 ? String(depts[0].id_departamento) : '');
+      } else {
+          setTargetDept(String(userObj.id_departamento));
+      }
+      setModalOpen(true);
+  }
+
+  const confirmAssign = async () => {
+      if (!targetDept) { setAlertMsg('Seleccione un departamento destino primero.'); return; }
+      const res = await fetch(getApiUrl('/api/empleados/assign'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: targetEmp.id, department_id: targetDept })
+      });
+      if (res.ok) {
+          setModalOpen(false);
+          setTargetEmp(null);
+          setFilterDept('Todos');
+          load();
+      } else {
+          setAlertMsg('Error al asignar el empleado.');
+      }
+  }
+
+  const confirmRemove = (empId: number) => {
+      setEmpToRemove(empId);
+      setRemoveModalOpen(true);
+  }
+
+  const executeRemove = async () => {
+      if (empToRemove === null) return;
+      const res = await fetch(getApiUrl('/api/empleados/remove'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_id: empToRemove })
+      });
+      if (res.ok) {
+          setFilterDept('Sin Área');
+          load();
+      } else {
+          setAlertMsg('Error al remover el empleado.');
+      }
+      setRemoveModalOpen(false);
+      setEmpToRemove(null);
+  }
+
+  const filteredEmployees = unassigned.filter(emp => {
+      const matchSearch = emp.name.toLowerCase().includes(search.toLowerCase()) || emp.bio.toLowerCase().includes(search.toLowerCase());
+      const matchDept = filterDept === 'Todos' ? true : (filterDept === 'Sin Área' ? emp.dept_id === null : emp.dept === filterDept);
+      return matchSearch && matchDept;
+  });
+
+  return (
+    <main className="content">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">RECURSOS HUMANOS</span>
+          <h1>Asignar o Transferir Personal</h1>
+          <p>Busca empleados en todo el hospital y asígnalos a tu departamento o libéralos.</p>
+        </div>
+      </div>
+      
+      {/* Modo Administrador global dropdown removed. Replaced by modal. */}
+
+      <section className="report-list-card" style={{ padding: '25px', background: '#fff' }}>
+          
+          <div style={{ display: 'flex', gap: '20px', marginBottom: '25px' }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                  <Search size={18} style={{ position: 'absolute', left: '15px', top: '13px', color: '#64748b' }} />
+                  <input type="text" placeholder="Buscar por nombre o código biométrico..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', padding: '12px 15px 12px 45px', borderRadius: '10px', border: '1px solid #cbd9e1', background: '#f8fafc', outline: 'none', transition: 'box-shadow 0.2s', fontSize: '13px' }} onFocus={(e) => e.target.style.boxShadow = '0 0 0 3px rgba(0,166,166,0.15)'} onBlur={(e) => e.target.style.boxShadow = 'none'} />
+              </div>
+              <div style={{ width: '280px' }}>
+                  <select value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ width: '100%', padding: '12px 15px', borderRadius: '10px', border: '1px solid #cbd9e1', background: '#f8fafc', outline: 'none', fontSize: '13px' }}>
+                      <option value="Todos">Filtro: Todas las Áreas (Origen)</option>
+                      <option value="Sin Área">Filtro: Empleados Sin Área</option>
+                      {depts.map(d => <option key={d.id_departamento} value={d.nombre_departmento}>{d.nombre_departmento}</option>)}
+                  </select>
+              </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+              {filteredEmployees.map((emp) => {
+                  const isMine = String(emp.dept_id) === String(userObj.id_departamento);
+                  const isFree = emp.dept_id === null;
+                  
+                  return (
+                      <div key={emp.id} style={{ display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '14px', border: '1px solid', borderColor: isMine ? '#c8e5ea' : (isFree ? '#fcd34d' : '#e2e8f0'), background: isMine ? '#f3ffff' : (isFree ? '#fffbeb' : '#fff'), boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                              <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.05em', background: isMine ? '#00a6a6' : (isFree ? '#f59e0b' : '#64748b'), color: '#fff' }}>
+                                  {isFree ? 'SIN ÁREA' : emp.dept.toUpperCase()}
+                              </span>
+                              <span style={{ fontSize: '11px', fontFamily: 'monospace', color: '#64748b', background: '#f1f5f9', padding: '3px 7px', borderRadius: '4px' }}>{emp.bio}</span>
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: isMine ? '#d6ffff' : '#f1f5f9', color: isMine ? '#00a6a6' : '#64748b', display: 'grid', placeItems: 'center', fontWeight: 'bold', fontSize: '16px' }}>
+                                  {emp.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                  <strong style={{ display: 'block', color: 'var(--navy)', fontSize: '14px', marginBottom: '3px' }}>{emp.name}</strong>
+                                  <span style={{ display: 'block', color: 'var(--muted)', fontSize: '12px' }}>{emp.role}</span>
+                              </div>
+                          </div>
+                          
+                          <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
+                              {userObj.rol === 'Administrador' ? (
+                                  <>
+                                      {emp.dept_id !== null && (
+                                          <button onClick={() => confirmRemove(emp.id)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='#fee2e2'} onMouseLeave={(e)=>e.currentTarget.style.background='#fef2f2'}>
+                                              Quitar de su Área
+                                          </button>
+                                      )}
+                                      <button onClick={() => openAssignModal(emp)} className="primary-button" style={{ flex: 1, padding: '10px', fontSize: '12px' }}>
+                                          {isFree ? 'Asignar a un Área' : 'Transferir de Área'}
+                                      </button>
+                                  </>
+                              ) : (
+                                  <>
+                                      {isMine ? (
+                                          <button onClick={() => confirmRemove(emp.id)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='#fee2e2'} onMouseLeave={(e)=>e.currentTarget.style.background='#fef2f2'}>
+                                              Quitar de mi Área
+                                          </button>
+                                      ) : (
+                                          <button onClick={() => openAssignModal(emp)} className="primary-button" style={{ flex: 1, padding: '10px', fontSize: '12px' }}>
+                                              {isFree ? 'Asignar a mi Área' : 'Transferir a mi Área'}
+                                          </button>
+                                      )}
+                                  </>
+                              )}
+                          </div>
+                      </div>
+                  )
+              })}
+          </div>
+          
+          {filteredEmployees.length === 0 && <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd9e1' }}>
+              <strong style={{ display: 'block', fontSize: '15px', color: 'var(--navy)', marginBottom: '5px' }}>No hay resultados</strong>
+              Intenta ajustar los filtros o el texto de búsqueda.
+          </div>}
+      </section>
+
+      {modalOpen && targetEmp && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '5px', fontSize: '18px', color: 'var(--navy)' }}>
+                      {targetEmp.dept_id === null ? 'Asignar Área' : 'Transferir Área'}
+                  </h3>
+                  <p style={{ color: 'var(--muted)', fontSize: '13px', marginBottom: '20px' }}>
+                      Selecciona el departamento destino para <strong>{targetEmp.name}</strong>.
+                  </p>
+                  
+                  <div style={{ marginBottom: '25px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Departamento Destino</label>
+                      <select value={targetDept} onChange={(e) => setTargetDept(e.target.value)} disabled={userObj.rol !== 'Administrador'} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1', background: userObj.rol !== 'Administrador' ? '#f1f5f9' : '#fff', fontWeight: 'bold', color: 'var(--navy)', fontSize: '14px' }}>
+                          {depts.map(d => <option key={d.id_departamento} value={d.id_departamento}>{d.nombre_departmento}</option>)}
+                      </select>
+                      {userObj.rol !== 'Administrador' && (
+                          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>Solo puedes asignar empleados a tu propio departamento.</div>
+                      )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button onClick={() => { setModalOpen(false); setTargetEmp(null); }} style={{ padding: '10px 15px', borderRadius: '8px', border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 'bold', cursor: 'pointer' }}>
+                          Cancelar
+                      </button>
+                      <button onClick={confirmAssign} className="primary-button" style={{ padding: '10px 20px' }}>
+                          Confirmar
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+      {alertMsg && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: 'var(--navy)' }}>Atención</h3>
+                  <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '25px', lineHeight: 1.5 }}>
+                      {alertMsg}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button onClick={() => setAlertMsg('')} className="primary-button" style={{ padding: '10px 20px' }}>
+                          Entendido
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {removeModalOpen && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#ef4444' }}>Confirmar acción</h3>
+                  <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '25px', lineHeight: 1.5 }}>
+                      ¿Seguro que deseas remover a este empleado de su área? Quedará libre para ser asignado a otra.
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button onClick={() => { setRemoveModalOpen(false); setEmpToRemove(null); }} style={{ padding: '10px 15px', borderRadius: '8px', border: 'none', background: '#f1f5f9', color: '#64748b', fontWeight: 'bold', cursor: 'pointer' }}>
+                          Cancelar
+                      </button>
+                      <button onClick={executeRemove} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#ef4444', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
+                          Sí, remover
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+    </main>
+  );
+}
+
+function AreasView({ setView }: { setView: (view: View) => void }) {
+  const [depts, setDepts] = useState<any[]>([]);
+  const [jefes, setJefes] = useState<any[]>([]);
+  const [newAreaName, setNewAreaName] = useState('');
+  const [selectedJefeId, setSelectedJefeId] = useState('');
+  const [alertMsg, setAlertMsg] = useState('');
+
+  const load = () => {
+      fetch(getApiUrl('/api/departamentos')).then(r=>r.json()).then(data => setDepts(data));
+      fetch(getApiUrl('/api/jefes')).then(r=>r.json()).then(data => setJefes(data));
+  }
+  useEffect(() => { load() }, []);
+
+  const createArea = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newAreaName.trim()) { setAlertMsg('Ingresa un nombre para la nueva área.'); return; }
+      
+      const res = await fetch(getApiUrl('/api/departamentos'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre_departmento: newAreaName.trim(), jefe_id: selectedJefeId || null })
+      });
+      
+      if (res.ok) {
+          setAlertMsg('Área creada exitosamente.');
+          setNewAreaName('');
+          setSelectedJefeId('');
+          load();
+      } else {
+          setAlertMsg('Error al crear el área.');
+      }
+  }
+
+  return (
+    <main className="content">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">ADMINISTRACIÓN</span>
+          <h1>Gestión de Áreas</h1>
+          <p>Crea nuevas áreas y asigna Jefes a cada departamento.</p>
+        </div>
+      </div>
+      
+      <section className="form-card" style={{ marginBottom: '20px' }}>
+          <div className="form-card-heading">
+              <div>
+                  <h2>Crear Nueva Área</h2>
+                  <p>Define el nombre del nuevo departamento y opcionalmente asígnale un Jefe.</p>
+              </div>
+          </div>
+          <form onSubmit={createArea} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', padding: '20px' }}>
+              <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Nombre del Área</label>
+                  <input type="text" value={newAreaName} onChange={e => setNewAreaName(e.target.value)} placeholder="Ej: Pediatría" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Asignar Jefe (Opcional)</label>
+                  <select value={selectedJefeId} onChange={e => setSelectedJefeId(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1', background: '#fff' }}>
+                      <option value="">-- Sin asignar --</option>
+                      {jefes.map(j => (
+                          <option key={j.id_empleado} value={j.id_empleado}>
+                              {j.nombre_completo} {j.id_departamento ? '(Ya tiene área)' : '(Sin área)'}
+                          </option>
+                      ))}
+                  </select>
+              </div>
+              <button type="submit" className="primary-button" style={{ padding: '12px 20px', whiteSpace: 'nowrap' }}>
+                  Crear Área
+              </button>
+          </form>
+      </section>
+
+      <section className="report-list-card" style={{ padding: '20px' }}>
+          <h3 style={{ marginTop: 0, marginBottom: '15px', color: 'var(--navy)' }}>Áreas Existentes ({depts.length})</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+              {depts.map(d => {
+                  const jefe = jefes.find(j => j.id_departamento === d.id_departamento);
+                  return (
+                      <div key={d.id_departamento} style={{ padding: '15px', border: '1px solid #e2e8f0', borderRadius: '10px', background: '#f8fafc' }}>
+                          <strong style={{ display: 'block', color: 'var(--navy)', marginBottom: '5px' }}>{d.nombre_departmento}</strong>
+                          <span style={{ fontSize: '12px', color: '#64748b' }}>
+                              Jefe: {jefe ? <strong style={{ color: '#0f172a' }}>{jefe.nombre_completo}</strong> : <span style={{ fontStyle: 'italic' }}>Sin jefe asignado</span>}
+                          </span>
+                      </div>
+                  )
+              })}
+          </div>
+      </section>
+
+      {alertMsg && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: '#fff', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: 'var(--navy)' }}>Atención</h3>
+                  <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '25px', lineHeight: 1.5 }}>
+                      {alertMsg}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button onClick={() => setAlertMsg('')} className="primary-button" style={{ padding: '10px 20px' }}>
+                          Entendido
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+    </main>
+  );
 }
 
 export default function Page() {
@@ -246,7 +673,7 @@ export default function Page() {
   const [role, setRole] = useState<RoleMeta>({ year: currentYear, month: monthNames[currentMonth], service: 'Cargando...', serviceId: null })
   
   useEffect(() => {
-      if(userObj) {
+      if(userObj && view !== 'login' && view !== 'assign') {
           // fetch people based on service
           const m = monthNames.indexOf(role.month) + 1;
           let qs = `?mes=${m}&anio=${role.year}`;
@@ -257,9 +684,17 @@ export default function Page() {
               setPeople(data);
           });
       }
-  }, [role.serviceId, role.month, role.year, userObj]);
+  }, [role.serviceId, role.month, role.year, userObj, view]);
 
   const current = useMemo(() => view, [view])
   if (current === 'login' || !userObj) return <Login onLogin={(u: any) => { setUserObj(u); setView('dashboard') }} />
-  return <AppShell view={current} setView={setView} userObj={userObj}>{current === 'dashboard' && <Dashboard setView={setView} userObj={userObj} people={people} />}{current === 'editor' && <Editor setView={setView} people={people} setPeople={setPeople} role={role} setRole={setRole} userObj={userObj} />}{current === 'reports' && <Reports setView={setView} people={people} role={role} setRole={setRole} userObj={userObj} />}{current === 'report' && <Report setView={setView} people={people} role={role} />}</AppShell>
+  return <AppShell view={current} setView={setView} userObj={userObj}>
+    {current === 'dashboard' && <Dashboard setView={setView} userObj={userObj} people={people} />}
+    {current === 'editor' && <Editor setView={setView} people={people} setPeople={setPeople} role={role} setRole={setRole} userObj={userObj} />}
+    {current === 'assign' && <AssignView setView={setView} userObj={userObj} />}
+    {current === 'areas' && <AreasView setView={setView} />}
+    {current === 'reports' && <Reports setView={setView} people={people} role={role} setRole={setRole} userObj={userObj} />}
+    {current === 'history' && <HistoryView setView={setView} role={role} setRole={setRole} userObj={userObj} />}
+    {current === 'report' && <Report setView={setView} people={people} role={role} />}
+  </AppShell>
 }
