@@ -16,14 +16,15 @@ class CheckRole
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
         // asumiendo uso de Sanctum o auth básico
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'No autenticado'], 401);
             }
+
             return redirect('/login');
         }
 
-        if (!in_array(auth()->user()->rol, $roles)) {
+        if (! in_array(auth()->user()->rol, $roles)) {
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'Acceso denegado'], 403);
             }

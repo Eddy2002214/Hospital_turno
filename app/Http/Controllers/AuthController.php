@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\User;
 use App\Models\Empleado;
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
@@ -14,7 +13,7 @@ class AuthController extends Controller
 
         $empleado = Empleado::where('codigo_biometrico', $code)->first();
 
-        if (!$empleado || !$empleado->usuario) {
+        if (! $empleado || ! $empleado->usuario) {
             return response()->json(['error' => 'Código no válido o usuario no encontrado'], 401);
         }
 

@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class AsignacionTurnoDiario extends Model
 {
     protected $table = 'Asignacion_Turnos_Diarios';
+
     protected $primaryKey = 'id_asignacion';
+
     public $timestamps = false;
 
     protected $fillable = [

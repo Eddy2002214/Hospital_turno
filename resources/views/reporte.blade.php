@@ -98,12 +98,24 @@
             </tr>
         </thead>
         <tbody>
+            @php $currentDept = null; @endphp
             @foreach ($matrix as $index => $row)
-                <tr>
+                @if ($departamento === 'TODOS LOS SERVICIOS' && $currentDept !== $row['departamento'])
+                    @php $currentDept = $row['departamento']; @endphp
+                    <tr style="background-color: #e2e8f0; font-weight: bold;">
+                        <td colspan="36" class="text-left" style="padding: 5px 8px; font-size: 11px; text-transform: uppercase;">
+                            ÁREA / SERVICIO: {{ $row['departamento'] }}
+                        </td>
+                    </tr>
+                @endif
+                <tr @if($row['is_jefe']) style="background-color: #f8fafc;" @endif>
                     <td>{{ $index + 1 }}</td>
                     <td>{{ $row['item'] }}</td>
                     <td>{{ $row['codigo_biometrico'] }}</td>
-                    <td class="text-left">{{ $row['nombre'] }}</td>
+                    <td class="text-left">
+                        <strong>{{ $row['nombre'] }}</strong>
+                        @if($row['is_jefe']) <span style="font-size: 9px; color: #b45309; font-weight: bold;">(JEFE)</span> @endif
+                    </td>
                     <td>{{ $row['cargo'] }}</td>
                     @for ($i = 1; $i <= 31; $i++)
                         <td>{{ $row['shifts'][$i] }}</td>

@@ -146,3 +146,24 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+# Premium Design System Directives
+
+## 1. frontend-design (Base Craftsmanship)
+- Eliminate generic boilerplate and AI template looks in Laravel forms, tables, and views.
+- Deep attention to detail: contextual typography, bespoke inputs, subtle borders (`border-neutral-200 dark:border-neutral-800`), refined focus rings (`ring-1 ring-neutral-900/10`), and purpose-driven layout structures.
+
+## 2. emil-design-eng (Emil Kowalski Aesthetic Standards)
+- **Hierarchy & Rhythm**: Strict visual weight balance, tight typographic scale, and deliberate whitespace cadence.
+- **Physicality & Tactility**: Natural shadows, crisp borders (`1px` hairpins), understated surfaces, and pixel-precise alignment.
+- **Form Follows Clarity**: Never clutter; remove unnecessary card borders or excessive wrappers. High information density without noise.
+
+## 3. animate (Microinteractions & Fluid Visual Feedback)
+- High-fidelity state transitions: interactive hover states, active depressions (`active:scale-[0.98]`), fluid height/modal transitions, subtle spring/ease curves.
+- Instant, non-intrusive visual feedback for validation, loading skeletons, and interactive states.
+- Fluid animations with sensible performance constraints (prefer `transform` and `opacity`).
+
+## 4. taste-skill (AI Cliché Shield & Anti-Slop Guardrail)
+- **Strictly Prohibited**: Exaggerated purple/violet gradients (`from-purple-600 to-indigo-600`), generic pill buttons with gaudy drop-shadows, repetitive default card grid patterns.
+- **Aesthetic Benchmark**: Minimalist, high-end SaaS craft (Linear, Stripe, Vercel design language).
+- **Color Discipline**: Sophisticated neutral palettes (slate, zinc, or neutral scale) with high-contrast accenting used sparingly only for primary actions and active states.
