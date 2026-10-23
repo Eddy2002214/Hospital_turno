@@ -501,7 +501,11 @@ function Editor({ setView, people, setPeople, role, setRole, userObj }: { setVie
                         </span>
                     )}
                 </div>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>{person.role}</span>
+                <span style={{ fontSize: '11px', color: '#64748b' }}>
+                    {isJefe || person.role?.toLowerCase().includes('jefe')
+                        ? `${person.role}: ${person.dept_name || 'Sin Área'}`
+                        : person.role}
+                </span>
                 <div style={{ display: 'flex', gap: '4px', marginTop: '5px', flexWrap: 'wrap' }}>
                     <button type="button" onClick={() => fillRow(person.id, 0)} style={{ fontSize: '10px', padding: '2px 5px', cursor: 'pointer', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f3f4f6', color: '#374151' }} title="Copia el turno del día 1 a todo el mes">Repetir Día 1</button>
                     {!isJefe && (
@@ -804,7 +808,11 @@ function Report({ setView, people, role }: { setView: (view: View) => void; peop
                           <strong>{person.name}</strong>
                           {person.is_jefe && <small style={{ color: '#b45309', fontWeight: 'bold' }}> (JEFE)</small>}
                       </td>
-                      <td className="role-cell">{person.role}</td>
+                      <td className="role-cell">
+                          {person.is_jefe || person.role?.toLowerCase().includes('jefe')
+                              ? `${person.role}: ${person.dept_name || 'Sin Área'}`
+                              : person.role}
+                      </td>
                       {person.shifts.slice(0, daysInMonth).map((shift, index) => (
                           <td className={`shift-cell ${shift === 'L' ? 'free' : ''}`} key={`${person.bio}-${index}`}>
                               {shift === 'L' ? '' : shift}
@@ -959,25 +967,34 @@ function AssignView({ setView, userObj, role, setRole }: { setView: (view: View)
   }
 
   const filteredEmployees = unassigned.filter(emp => {
-      const matchSearch = emp.name.toLowerCase().includes(search.toLowerCase()) || emp.bio.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = search.trim() === '' || 
+          emp.name.toLowerCase().includes(search.toLowerCase()) || 
+          emp.bio.toLowerCase().includes(search.toLowerCase());
       
-      if (search.trim() !== '') {
-          return matchSearch;
-      }
-      
+      let matchesDept = true;
+
       if (filterDept === 'Todos') {
-          return true;
-      }
-      
-      if (filterDept === 'Sin Área') {
-          return !emp.assigned_dept_ids || emp.assigned_dept_ids.length === 0;
+          matchesDept = true;
+      } else if (filterDept === 'Sin Área') {
+          const hasNoAssigned = !emp.assigned_dept_ids || emp.assigned_dept_ids.length === 0;
+          const hasNoBase = !emp.base_dept_id || emp.base_dept_name === 'Sin Área';
+          matchesDept = hasNoAssigned && hasNoBase;
+      } else {
+          const deptObj = depts.find(d => d.nombre_departmento.toLowerCase() === filterDept.toLowerCase());
+          const targetDeptId = deptObj ? Number(deptObj.id_departamento) : null;
+
+          const isInAssignedMonth = targetDeptId && emp.assigned_dept_ids 
+              ? emp.assigned_dept_ids.includes(targetDeptId) 
+              : false;
+
+          const isBaseDept = (targetDeptId && emp.base_dept_id && Number(emp.base_dept_id) === targetDeptId) ||
+              (emp.base_dept_name && emp.base_dept_name.toLowerCase() === filterDept.toLowerCase()) ||
+              (targetDeptId && emp.dept_id && Number(emp.dept_id) === targetDeptId);
+
+          matchesDept = isInAssignedMonth || isBaseDept;
       }
 
-      const deptObj = depts.find(d => d.nombre_departmento === filterDept);
-      const targetDeptId = deptObj ? Number(deptObj.id_departamento) : null;
-
-      // En el mes seleccionado, pertenece a este departamento ÚNICAMENTE si está asignado a él en este mes
-      return targetDeptId && emp.assigned_dept_ids ? emp.assigned_dept_ids.includes(targetDeptId) : false;
+      return matchSearch && matchesDept;
   });
 
   return (
@@ -1031,15 +1048,18 @@ function AssignView({ setView, userObj, role, setRole }: { setView: (view: View)
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
               {filteredEmployees.map((emp) => {
                   const myDeptId = userObj.id_departamento ? Number(userObj.id_departamento) : null;
-                  const isMine = myDeptId && emp.assigned_dept_ids ? emp.assigned_dept_ids.includes(myDeptId) : false;
-                  const isFree = !emp.assigned_dept_ids || emp.assigned_dept_ids.length === 0;
+                  const isAssignedThisMonthInMyDept = myDeptId && emp.assigned_dept_ids ? emp.assigned_dept_ids.includes(myDeptId) : false;
+                  const isBaseOfMyDept = myDeptId && ((emp.base_dept_id && Number(emp.base_dept_id) === myDeptId) || (emp.dept_id && Number(emp.dept_id) === myDeptId));
+                  const isMine = isAssignedThisMonthInMyDept || isBaseOfMyDept;
+                  const isFree = (!emp.assigned_dept_ids || emp.assigned_dept_ids.length === 0) && (!emp.base_dept_id || emp.base_dept_name === 'Sin Área');
                   const isSelf = String(emp.id) === String(userObj.id_empleado);
+                  const isEmpJefe = emp.is_jefe || ['Jefe de Area', 'Jefe de Servicio'].includes(emp.role);
                   
                   return (
                       <div key={emp.id} style={{ display: 'flex', flexDirection: 'column', padding: '20px', borderRadius: '14px', border: '1px solid', borderColor: isSelf ? '#bbf7d0' : (isMine ? '#c8e5ea' : (isFree ? '#fcd34d' : '#e2e8f0')), background: isSelf ? '#f0fdf4' : (isMine ? '#f3ffff' : (isFree ? '#fffbeb' : '#fff')), boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
                               <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '0.05em', background: isSelf ? '#22c55e' : (isMine ? '#00a6a6' : (isFree ? '#f59e0b' : '#64748b')), color: '#fff' }}>
-                                  {isSelf ? 'TU USUARIO' : (isMine ? 'EN TU ÁREA' : (isFree ? 'SIN ÁREA' : (emp.assigned_dept_names?.length > 0 ? emp.assigned_dept_names.join(' · ').toUpperCase() : emp.dept.toUpperCase())))}
+                                  {isSelf ? 'TU USUARIO' : (isMine ? 'EN TU ÁREA' : (isFree ? 'SIN ÁREA' : (emp.assigned_dept_names?.length > 0 ? emp.assigned_dept_names.join(' · ').toUpperCase() : (emp.base_dept_name || emp.dept).toUpperCase())))}
                               </span>
                               <span style={{ fontSize: '11px', fontFamily: 'monospace', color: '#64748b', background: '#f1f5f9', padding: '3px 7px', borderRadius: '4px' }}>{emp.bio}</span>
                           </div>
@@ -1049,16 +1069,27 @@ function AssignView({ setView, userObj, role, setRole }: { setView: (view: View)
                                   {emp.name.charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                  <strong style={{ display: 'block', color: 'var(--navy)', fontSize: '14px', marginBottom: '3px' }}>{emp.name} {isSelf && '(Tú)'}</strong>
-                                  <span style={{ display: 'block', color: 'var(--muted)', fontSize: '12px' }}>{emp.role}</span>
-                                  {emp.base_dept_name && emp.base_dept_name !== 'Sin Área' && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <strong style={{ color: 'var(--navy)', fontSize: '14px' }}>{emp.name} {isSelf && '(Tú)'}</strong>
+                                      {isEmpJefe && (
+                                          <span style={{ fontSize: '9px', background: '#eff6ff', color: '#1d4ed8', padding: '1px 5px', borderRadius: '4px', fontWeight: 'bold', border: '1px solid #bfdbfe' }}>
+                                              JEFE
+                                          </span>
+                                      )}
+                                  </div>
+                                  <span style={{ display: 'block', color: 'var(--muted)', fontSize: '12px', marginTop: '2px' }}>
+                                      {isEmpJefe 
+                                          ? `${emp.role}: ${emp.base_dept_name || emp.dept || 'Sin Área'}` 
+                                          : emp.role}
+                                  </span>
+                                  {emp.base_dept_name && emp.base_dept_name !== 'Sin Área' && !isEmpJefe && (
                                       <span style={{ display: 'block', color: '#64748b', fontSize: '11px', marginTop: '3px' }}>
                                           Área base: <strong>{emp.base_dept_name}</strong>
                                       </span>
                                   )}
-                                  {emp.assigned_dept_names && emp.assigned_dept_names.length > 1 && (
+                                  {emp.assigned_dept_names && emp.assigned_dept_names.length > 0 && (
                                       <span style={{ display: 'block', color: '#0284c7', fontSize: '11px', marginTop: '2px', fontWeight: '500' }}>
-                                          Asignado en: {emp.assigned_dept_names.join(' · ')}
+                                          Asignado este mes en: {emp.assigned_dept_names.join(' · ')}
                                       </span>
                                   )}
                               </div>
@@ -1066,7 +1097,11 @@ function AssignView({ setView, userObj, role, setRole }: { setView: (view: View)
                           
                           <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
                               {!isSelf && (
-                                  userObj.rol === 'Administrador' ? (
+                                  isEmpJefe ? (
+                                      <span style={{ width: '100%', padding: '8px', textAlign: 'center', borderRadius: '8px', background: '#f8fafc', color: '#64748b', fontSize: '11px', fontWeight: 'bold', border: '1px solid #e2e8f0' }}>
+                                          Jefe titular del área
+                                      </span>
+                                  ) : userObj.rol === 'Administrador' ? (
                                       <>
                                           {emp.assigned_dept_ids && emp.assigned_dept_ids.length > 0 && (
                                               <button 
@@ -1088,7 +1123,7 @@ function AssignView({ setView, userObj, role, setRole }: { setView: (view: View)
                                       </>
                                   ) : (
                                       <>
-                                          {isMine ? (
+                                          {isAssignedThisMonthInMyDept ? (
                                               <button onClick={() => confirmRemove(emp.id, userObj.id_departamento)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#ef4444', fontWeight: 'bold', fontSize: '12px', transition: 'background 0.2s' }} onMouseEnter={(e)=>e.currentTarget.style.background='#fee2e2'} onMouseLeave={(e)=>e.currentTarget.style.background='#fef2f2'}>
                                                   Quitar de mi Área
                                               </button>
@@ -1102,7 +1137,7 @@ function AssignView({ setView, userObj, role, setRole }: { setView: (view: View)
                               )}
                           </div>
                       </div>
-                  )
+                  );
               })}
           </div>
           
@@ -1184,7 +1219,24 @@ function AssignView({ setView, userObj, role, setRole }: { setView: (view: View)
 function AreasView({ setView }: { setView: (view: View) => void }) {
   const [depts, setDepts] = useState<any[]>([]);
   const [empleados, setEmpleados] = useState<any[]>([]);
-  const [newAreaName, setNewAreaName] = useState('');
+  const [catalogList, setCatalogList] = useState<string[]>([
+      'A.R.P.C. Y COMPRAS MENORES', 'ASESORIA JURIDICA', 'AUDITORIA INTERNA', 'CIRUGIA AMBULATORIA',
+      'COMITE DE INFECCIONES', 'COMUNICACION SOCIAL Y RR PP', 'CONSULTA EXTERNA', 'DIRECCION',
+      'DOCENCIA E INVESTIGACION', 'DPTO. ADM. FINANCIERO', 'DPTO. DE ALMACENES', 'DPTO. DE ARCHIVO Y ESTADISTICA',
+      'DPTO. DE CIRUGIA', 'DPTO. DE COMPRAS Y ADQUISICIONES', 'DPTO. DE CONTABILIDAD', 'DPTO. DE EMERGENCIA',
+      'DPTO. DE FINANZAS', 'DPTO. DE GINECOLOGIA', 'DPTO. DE MEDICINA', 'DPTO. DE PEDIATRIA',
+      'DPTO. DE PLANIFICACION', 'DPTO. DE SERVICIOS GENERALES', 'DPTO. DE TECNOLOGIA DE INFORMACION',
+      'DPTO. DE TERAPIA INTENSIVA', 'DPTO. RR HH', 'EDUCACION CONTINUA', 'ELECTROMEDICINA',
+      'Emergencias', 'Enfermería', 'FARMACIA', 'FISIOTERAPIA', 'HEMODIALISIS', 'JEFATURA DE ENFERMERIA',
+      'LABORATORIO', 'LAVANDERIA', 'MANTENIMIENTO', 'NUTRICION', 'ODONTOLOGIA', 'PATOLOGIA',
+      'Pediatría', 'PROYECTO JICA', 'QUIROFANO', 'RAYOS X & IMAGENOLOGIA', 'S.U.S.',
+      'SERVICIO BANCO DE SANGRE', 'SERVICIO DE ESTERILIZACION', 'SERVICIO SOCIAL', 'SUB DIRECCION AMBULATORIAL',
+      'SUB DIRECCION HOSPITALIZACION', 'SUBDIRECCION ADMINISTRATIVA', 'Tecnología de la Información',
+      'Traumatología', 'UNIDAD TRANSFUSIONAL'
+  ]);
+  const [selectedArea, setSelectedArea] = useState('');
+  const [customAreaName, setCustomAreaName] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
   const [selectedEmpleadoId, setSelectedEmpleadoId] = useState('');
   const [alertMsg, setAlertMsg] = useState('');
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -1193,31 +1245,56 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
   const load = () => {
       fetch(getApiUrl('/api/departamentos')).then(r=>r.json()).then(data => setDepts(data));
       fetch(getApiUrl('/api/empleados/all')).then(r=>r.json()).then(data => setEmpleados(data));
+      fetch(getApiUrl('/api/departamentos/catalogo')).then(r=>r.json()).then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+              setCatalogList(data);
+          }
+      });
   }
   useEffect(() => { load() }, []);
 
+  const availableCatalog = useMemo(() => {
+      const existingNames = new Set(depts.map(d => (d.nombre_departmento || '').trim().toLowerCase()));
+      return catalogList.filter(name => !existingNames.has(name.trim().toLowerCase()));
+  }, [catalogList, depts]);
+
   const createArea = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!newAreaName.trim()) { setAlertMsg('Ingresa un nombre para la nueva área.'); return; }
+      const finalName = (isCustom ? customAreaName : selectedArea).trim();
+      if (!finalName) {
+          setAlertMsg('Selecciona un área del listado o ingresa un nombre.');
+          return;
+      }
+
+      // Restricción para que no se repitan las áreas (validación preventiva en frontend)
+      const yaExiste = depts.some(
+          d => d.nombre_departmento && d.nombre_departmento.trim().toLowerCase() === finalName.toLowerCase()
+      );
+      if (yaExiste) {
+          setAlertMsg(`El área "${finalName}" ya existe en el sistema. No se permiten áreas repetidas.`);
+          return;
+      }
       
       const res = await fetch(getApiUrl('/api/departamentos'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre_departmento: newAreaName.trim(), jefe_empleado_id: selectedEmpleadoId || null })
+          body: JSON.stringify({ nombre_departmento: finalName, jefe_empleado_id: selectedEmpleadoId || null })
       });
       
+      const data = await res.json();
       if (res.ok) {
-          const data = await res.json();
-          let msg = 'Área creada exitosamente.';
+          let msg = `Área "${finalName}" creada exitosamente.`;
           if (data.created_username) {
-              msg += ` Se ha generado un acceso para el Jefe con el usuario: ${data.created_username}`;
+              msg += ` Se ha generado un acceso para el Jefe con el código de ingreso: ${data.created_username}`;
           }
           setAlertMsg(msg);
-          setNewAreaName('');
+          setSelectedArea('');
+          setCustomAreaName('');
+          setIsCustom(false);
           setSelectedEmpleadoId('');
           load();
       } else {
-          setAlertMsg('Error al crear el área.');
+          setAlertMsg(data.error || 'Error al crear el área.');
       }
   }
 
@@ -1235,22 +1312,55 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
           <div className="form-card-heading">
               <div>
                   <h2>Crear Nueva Área</h2>
-                  <p>Define el nombre del nuevo departamento y opcionalmente elige un empleado para ser su Jefe.</p>
+                  <p>Selecciona el área o departamento oficial que deseas habilitar y opcionalmente elige su Jefe.</p>
               </div>
           </div>
-          <form onSubmit={createArea} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', padding: '20px' }}>
-              <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Nombre del Área</label>
-                  <input type="text" value={newAreaName} onChange={e => setNewAreaName(e.target.value)} placeholder="Ej: Traumatología" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1' }} />
+          <form onSubmit={createArea} style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', padding: '20px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '280px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>
+                      Nombre del Área / Servicio ({availableCatalog.length} disponibles)
+                  </label>
+                  <select 
+                      value={isCustom ? '__CUSTOM__' : selectedArea} 
+                      onChange={e => {
+                          if (e.target.value === '__CUSTOM__') {
+                              setIsCustom(true);
+                          } else {
+                              setIsCustom(false);
+                              setSelectedArea(e.target.value);
+                          }
+                      }} 
+                      style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1', background: '#fff', fontSize: '13px', outline: 'none', color: (isCustom ? customAreaName : selectedArea) ? 'var(--navy)' : '#64748b', fontWeight: (isCustom ? customAreaName : selectedArea) ? '500' : 'normal' }}
+                  >
+                      <option value="">-- Seleccionar Área / Servicio Hospitalario --</option>
+                      {availableCatalog.map(areaName => (
+                          <option key={areaName} value={areaName}>
+                              {areaName}
+                          </option>
+                      ))}
+                      <option value="__CUSTOM__">+ Otro (Escribir nombre manualmente)...</option>
+                  </select>
+                  {isCustom && (
+                      <input 
+                          type="text" 
+                          autoFocus
+                          value={customAreaName} 
+                          onChange={e => setCustomAreaName(e.target.value)} 
+                          placeholder="Escribe el nombre del área..." 
+                          style={{ width: '100%', marginTop: '8px', padding: '10px 12px', borderRadius: '8px', border: '1px solid #0284c7', background: '#f8fafc', fontSize: '13px' }} 
+                      />
+                  )}
               </div>
-              <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>Asignar Empleado como Jefe (Opcional)</label>
+              <div style={{ flex: 1, minWidth: '280px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px' }}>
+                      Asignar Empleado como Jefe (Opcional)
+                  </label>
                   <button type="button" onClick={() => setSearchModalOpen(true)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd9e1', background: '#fff', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: selectedEmpleadoId ? '#0f172a' : '#64748b' }}>
                       {selectedEmpleadoId ? (empleados.find(e => String(e.id_empleado) === String(selectedEmpleadoId))?.nombre_completo || 'Seleccionado') : '-- Seleccionar Empleado --'}
                       <Search size={16} color="#64748b" />
                   </button>
               </div>
-              <button type="submit" className="primary-button" style={{ padding: '12px 20px', whiteSpace: 'nowrap' }}>
+              <button type="submit" className="primary-button" style={{ padding: '12px 20px', whiteSpace: 'nowrap', marginTop: '23px', height: '44px' }}>
                   Crear Área
               </button>
           </form>
@@ -1258,15 +1368,22 @@ function AreasView({ setView }: { setView: (view: View) => void }) {
 
       <section className="report-list-card" style={{ padding: '20px' }}>
           <h3 style={{ marginTop: 0, marginBottom: '15px', color: 'var(--navy)' }}>Áreas Existentes ({depts.length})</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '15px' }}>
               {depts.map(d => {
                   const jefe = d.empleados && d.empleados.length > 0 ? d.empleados[0] : null;
                   return (
-                      <div key={d.id_departamento} style={{ padding: '15px', border: '1px solid #e2e8f0', borderRadius: '10px', background: '#f8fafc' }}>
-                          <strong style={{ display: 'block', color: 'var(--navy)', marginBottom: '5px' }}>{d.nombre_departmento}</strong>
+                      <div key={d.id_departamento} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '6px', transition: 'box-shadow 0.2s, transform 0.2s' }}>
+                          <strong style={{ display: 'block', color: 'var(--navy)', fontSize: '14px', marginBottom: '2px' }}>{d.nombre_departmento}</strong>
                           <span style={{ fontSize: '12px', color: '#64748b' }}>
                               Jefe: {jefe ? <strong style={{ color: '#0f172a' }}>{jefe.nombre_completo}</strong> : <span style={{ fontStyle: 'italic' }}>Sin jefe asignado</span>}
                           </span>
+                          {jefe && (
+                              <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontSize: '11px', color: '#0369a1', background: '#e0f2fe', padding: '3px 8px', borderRadius: '6px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #bae6fd' }}>
+                                      Código para planilla: <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#0284c7' }}>{jefe.codigo_biometrico}</span>
+                                  </span>
+                              </div>
+                          )}
                       </div>
                   )
               })}

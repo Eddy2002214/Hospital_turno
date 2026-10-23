@@ -601,14 +601,14 @@ class RoleController extends Controller
             }
         }
 
-        // Fetch all employees EXCEPT those whose cargo is Administrador de Sistema, Jefe de Servicio or Jefe de Area
+        // Fetch all employees EXCEPT those whose cargo is Administrador de Sistema
         $empleados = Empleado::with(['cargo', 'departamento'])
             ->whereHas('cargo', function ($q) {
-                $q->whereNotIn('nombre_cargo', ['Administrador de Sistema', 'Jefe de Servicio', 'Jefe de Area']);
+                $q->where('nombre_cargo', '!=', 'Administrador de Sistema');
             })
             ->get();
 
-        return $empleados->map(function ($emp) use ($empDeptsMap, $mes) {
+        return $empleados->map(function ($emp) use ($empDeptsMap) {
             $baseDeptId = $emp->id_departamento ? (int) $emp->id_departamento : null;
             $baseDeptName = $emp->departamento ? $emp->departamento->nombre_departmento : 'Sin Área';
 
@@ -619,14 +619,12 @@ class RoleController extends Controller
             if (! empty($assignedDeptNames)) {
                 $deptName = implode(' / ', $assignedDeptNames);
                 $deptId = $assignedDeptIds[0];
-            } elseif ($mes) {
-                // Si se consulta un mes específico y el empleado no está en ningún rol de este mes:
-                $deptName = 'Sin Área';
-                $deptId = null;
             } else {
                 $deptName = $baseDeptName;
                 $deptId = $baseDeptId;
             }
+
+            $isJefe = $emp->cargo && in_array($emp->cargo->nombre_cargo, ['Jefe de Servicio', 'Jefe de Area']);
 
             return [
                 'id' => $emp->id_empleado,
@@ -639,6 +637,7 @@ class RoleController extends Controller
                 'base_dept_name' => $baseDeptName,
                 'assigned_dept_ids' => $assignedDeptIds,
                 'assigned_dept_names' => $assignedDeptNames,
+                'is_jefe' => $isJefe,
             ];
         });
     }

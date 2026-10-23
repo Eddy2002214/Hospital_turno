@@ -116,7 +116,7 @@
                         <strong>{{ $row['nombre'] }}</strong>
                         @if($row['is_jefe']) <span style="font-size: 9px; color: #b45309; font-weight: bold;">(JEFE)</span> @endif
                     </td>
-                    <td>{{ $row['cargo'] }}</td>
+                    <td>{{ $row['is_jefe'] ? ($row['cargo'].': '.$row['departamento']) : $row['cargo'] }}</td>
                     @for ($i = 1; $i <= 31; $i++)
                         <td>{{ $row['shifts'][$i] }}</td>
                     @endfor

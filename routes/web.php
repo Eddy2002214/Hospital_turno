@@ -21,12 +21,47 @@ Route::get('/api/login', [AuthController::class, 'login']);
 Route::get('/api/departamentos', function () {
     return DepartamentoServicio::with(['empleados' => function ($q) {
         $q->whereHas('cargo', function ($q2) {
-            $q2->where('nombre_cargo', 'Jefe de Area');
+            $q2->whereIn('nombre_cargo', ['Jefe de Area', 'Jefe de Servicio']);
         });
     }])->get();
 });
+Route::get('/api/departamentos/catalogo', function () {
+    $csvFile = database_path('personal_hospital.csv');
+    $catalog = [];
+
+    if (file_exists($csvFile) && ($handle = fopen($csvFile, 'r')) !== false) {
+        fgetcsv($handle, 0, ';'); // skip header
+        while (($row = fgetcsv($handle, 0, ';')) !== false) {
+            if (! empty($row[9])) {
+                $name = trim(preg_replace('/\s+/', ' ', $row[9]));
+                if ($name !== '' && strtolower($name) !== 'sin servicio asignado') {
+                    $catalog[$name] = true;
+                }
+            }
+        }
+        fclose($handle);
+    }
+
+    $existing = DepartamentoServicio::pluck('nombre_departmento')->toArray();
+    $merged = array_unique(array_merge(array_keys($catalog), $existing));
+    sort($merged, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return response()->json($merged);
+});
 Route::post('/api/departamentos', function (Request $request) {
-    $dept = DepartamentoServicio::create(['nombre_departmento' => $request->nombre_departmento]);
+    $nombre = trim($request->nombre_departmento);
+    if (! $nombre) {
+        return response()->json(['error' => 'El nombre del área es requerido.'], 422);
+    }
+
+    $exists = DepartamentoServicio::whereRaw('LOWER(TRIM(nombre_departmento)) = ?', [mb_strtolower($nombre)])->exists();
+    if ($exists) {
+        return response()->json([
+            'error' => "El área '{$nombre}' ya existe en el sistema. No se permiten áreas repetidas.",
+        ], 422);
+    }
+
+    $dept = DepartamentoServicio::create(['nombre_departmento' => $nombre]);
     $createdUsername = null;
     if ($request->jefe_empleado_id) {
         $empleado = Empleado::find($request->jefe_empleado_id);
@@ -40,6 +75,7 @@ Route::post('/api/departamentos', function (Request $request) {
             if ($user) {
                 $user->rol = 'Jefe de Area';
                 $user->save();
+                $createdUsername = $user->nombre_usuario ?: $empleado->codigo_biometrico;
             } else {
                 User::create([
                     'nombre_usuario' => $empleado->codigo_biometrico,
