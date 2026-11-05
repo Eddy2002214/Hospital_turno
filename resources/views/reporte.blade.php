@@ -85,16 +85,23 @@
         <thead>
             <tr>
                 <th rowspan="2">N°</th>
+                <th rowspan="2">F.<br>Fin.</th>
                 <th rowspan="2">Ítem</th>
                 <th rowspan="2">Cód. Biom.</th>
                 <th rowspan="2" style="width: 200px;">Nombre Completo</th>
                 <th rowspan="2">Cargo</th>
                 <th colspan="31">Días del Mes</th>
+                <th colspan="5">Totales</th>
             </tr>
             <tr>
                 @for ($i = 1; $i <= 31; $i++)
                     <th class="col-day">{{ $i }}</th>
                 @endfor
+                <th>M</th>
+                <th>T</th>
+                <th>N</th>
+                <th>L</th>
+                <th>Total Hrs</th>
             </tr>
         </thead>
         <tbody>
@@ -103,13 +110,43 @@
                 @if ($departamento === 'TODOS LOS SERVICIOS' && $currentDept !== $row['departamento'])
                     @php $currentDept = $row['departamento']; @endphp
                     <tr style="background-color: #e2e8f0; font-weight: bold;">
-                        <td colspan="36" class="text-left" style="padding: 5px 8px; font-size: 11px; text-transform: uppercase;">
+                        <td colspan="42" class="text-left" style="padding: 5px 8px; font-size: 11px; text-transform: uppercase;">
                             ÁREA / SERVICIO: {{ $row['departamento'] }}
                         </td>
                     </tr>
                 @endif
+                @php
+                    $mCount = 0;
+                    $tCount = 0;
+                    $nCount = 0;
+                    $lCount = 0;
+                    $totalHrs = 0;
+                    for ($d = 1; $d <= 31; $d++) {
+                        $s = $row['shifts'][$d] ?? 'L';
+                        if ($s === 'M') {
+                            $mCount++;
+                            $totalHrs += 6;
+                        } elseif ($s === 'M*') {
+                            $mCount++;
+                            $tCount++;
+                            $totalHrs += 8;
+                        } elseif ($s === 'T') {
+                            $tCount++;
+                            $totalHrs += 6;
+                        } elseif ($s === 'N') {
+                            $nCount++;
+                            $totalHrs += 12;
+                        } else {
+                            $lCount++;
+                        }
+                    }
+                    if (!empty($row['is_jefe'])) {
+                        $totalHrs = 0;
+                    }
+                @endphp
                 <tr @if($row['is_jefe']) style="background-color: #f8fafc;" @endif>
                     <td>{{ $index + 1 }}</td>
+                    <td>{{ $row['ff'] ?? 'TGN' }}</td>
                     <td>{{ $row['item'] }}</td>
                     <td>{{ $row['codigo_biometrico'] }}</td>
                     <td class="text-left">
@@ -120,6 +157,11 @@
                     @for ($i = 1; $i <= 31; $i++)
                         <td>{{ $row['shifts'][$i] }}</td>
                     @endfor
+                    <td>{{ $mCount }}</td>
+                    <td>{{ $tCount }}</td>
+                    <td>{{ $nCount }}</td>
+                    <td>{{ $lCount }}</td>
+                    <td style="font-weight: bold;">{{ $totalHrs }}h</td>
                 </tr>
             @endforeach
         </tbody>

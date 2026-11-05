@@ -13,9 +13,12 @@ class Empleado extends Model
 
     protected $primaryKey = 'id_empleado';
 
+    public $incrementing = true;
+
     public $timestamps = false;
 
     protected $fillable = [
+        'id_empleado',
         'item_id',
         'codigo_biometrico',
         'ci',

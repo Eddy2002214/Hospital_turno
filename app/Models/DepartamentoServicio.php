@@ -25,4 +25,9 @@ class DepartamentoServicio extends Model
     {
         return $this->hasMany(RolMensual::class, 'id_departamento', 'id_departamento');
     }
+
+    public function getNombreDepartamentoAttribute(): ?string
+    {
+        return $this->attributes['nombre_departmento'] ?? null;
+    }
 }

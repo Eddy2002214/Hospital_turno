@@ -21,7 +21,7 @@ class CheckRole
                 return response()->json(['error' => 'No autenticado'], 401);
             }
 
-            return redirect('/login');
+            return redirect('/');
         }
 
         if (! in_array(auth()->user()->rol, $roles)) {

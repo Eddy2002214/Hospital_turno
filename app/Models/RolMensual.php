@@ -18,6 +18,7 @@ class RolMensual extends Model
         'mes',
         'anio',
         'id_departamento',
+        'id_jefe',
         'fecha_recepcion',
         'estado',
         'aprobado_por',
@@ -31,6 +32,11 @@ class RolMensual extends Model
             'fecha_recepcion' => 'date',
             'fecha_aprobacion' => 'datetime',
         ];
+    }
+
+    public function jefe(): BelongsTo
+    {
+        return $this->belongsTo(Empleado::class, 'id_jefe', 'id_empleado');
     }
 
     public function departamento(): BelongsTo

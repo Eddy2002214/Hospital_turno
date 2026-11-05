@@ -43,3 +43,58 @@ body { background: radial-gradient(circle at 90% 0%, #e6f6f8 0, #f6f9fc 32%, #f3
 .report-page { background: #eef4f7; min-height: calc(100vh - 76px); padding: 28px 42px 50px; }.print-sheet { border: 1px solid #d8e3e9; border-radius: 14px; box-shadow: var(--shadow); }
 @media (max-width: 800px) { .sidebar { background: #10233f; }.topbar { height: 66px; padding: 0 18px; }.content { padding: 32px 18px 55px; }.login-card { padding: 32px 24px; border-radius: 20px; } }
 @media print { .print-sheet { border: 0; border-radius: 0; } }
+
+.editor-table-wrap { overflow: auto; }
+.editor-table th,
+.editor-table td { vertical-align: middle; }
+.editor-table thead th { position: sticky; top: 0; z-index: 4; background: #f2f8fb; }
+.editor-table th.sticky-col,
+.editor-table td.first { z-index: 6; background: #fff; }
+.editor-table th.sticky-col { background: #f2f8fb; }
+.editor-table th.person-col,
+.editor-table td.person-col { z-index: 5; background: #fff; box-shadow: 8px 0 12px rgba(16, 35, 63, 0.04); }
+.editor-table td:not(.sticky-col) { overflow: hidden; }
+.shift-select {
+    width: 28px;
+    min-width: 0;
+    max-width: 28px;
+    height: 26px;
+    margin: 0 auto;
+    display: block;
+    box-sizing: border-box;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: none;
+    text-align: center;
+    text-align-last: center;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 24px;
+    cursor: pointer;
+    color: #fff;
+}
+.shift-select.shift-l,
+.shift-mark {
+    background: #f4f7f8;
+    color: #64748b;
+    border-color: #d7e0e5;
+}
+.shift-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 26px;
+    margin: 0 auto;
+    border: 1px solid #d7e0e5;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+}
+.shift-select.shift-m { background: #2a87b5; border-color: #2a87b5; }
+.shift-select.shift-mstar { background: #816dc2; border-color: #816dc2; }
+.shift-select.shift-t { background: #df9a36; border-color: #df9a36; }
+.shift-select.shift-n { background: #4f617e; border-color: #4f617e; }
